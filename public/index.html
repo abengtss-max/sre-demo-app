@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>ConnectedDrive Telemetry · SRE Demo</title>
+    <title>ConnectedDrive Telemetry · Operator Console</title>
   <link rel="stylesheet" href="/styles.css" />
 </head>
 <body>
@@ -12,7 +12,7 @@
       <div class="logo">CD</div>
       <div>
         <h1>ConnectedDrive Telemetry</h1>
-        <p class="subtitle">Live vehicle telemetry ingestion · SRE Agent Demo</p>
+        <p class="subtitle">Live vehicle telemetry ingestion · Operator console</p>
       </div>
     </div>
     <div class="version-pill">
@@ -30,7 +30,7 @@
         <div class="stat"><span class="label">Heap used</span><span id="heap" class="value">—</span></div>
         <div class="stat warn"><span class="label">Retained records</span><span id="retained" class="value">—</span></div>
       </div>
-      <p class="hint">⚠️ <strong>Retained records</strong> should stay flat in a healthy build. If it climbs continuously you are watching the leak.</p>
+      <p class="hint">ℹ️ <strong>Retained records</strong> shows the size of the in-memory recent-events cache served by <code>GET /api/telemetry/recent</code>.</p>
     </section>
 
     <section class="card">
@@ -46,12 +46,13 @@
     </section>
 
     <section class="card">
-      <h2>About this demo</h2>
+      <h2>About this service</h2>
       <p>
-        This app is intentionally broken in <code>v1.0.0</code> — every telemetry event
-        is appended to an in-memory array that is never released. Run the Azure Load
-        Testing job, watch the alert fire, and let <strong>Azure SRE Agent</strong>
-        investigate, mitigate, and ship the fix to <code>v1.1.0</code>.
+        <code>telemetry-api</code> is the ingestion front door for the
+        ConnectedDrive platform. Use this console to verify pod health,
+        submit a test event, or hand off to the
+        <a href="/metrics">Prometheus metrics</a> endpoint. For incident
+        response procedures, see the Connected Services runbooks.
       </p>
     </section>
   </main>

@@ -1,6 +1,6 @@
-// SRE Demo App - Volvo Cars "ConnectedDrive Telemetry" demo service.
-// Version 1.0.0 contains an intentional memory leak. Version 1.1.0 fixes it.
-// The Azure SRE Agent demo is built around detecting, diagnosing and fixing this leak.
+// ConnectedDrive Telemetry API
+// Ingests near-real-time vehicle status events (VIN, speed, battery SoC, ts)
+// and serves the operator dashboard.
 
 const express = require('express');
 const morgan = require('morgan');
@@ -23,22 +23,18 @@ register.registerMetric(httpRequestsTotal);
 
 const telemetryGauge = new client.Gauge({
   name: 'sre_demo_retained_telemetry_records',
-  help: 'Number of telemetry records currently retained in memory (leak indicator)',
+  help: 'Number of telemetry records currently retained in the in-memory recent-events cache',
 });
 register.registerMetric(telemetryGauge);
 
-// ---- THE LEAK --------------------------------------------------------------
-// v1.0.0: every inbound telemetry payload is pushed into a module-scoped array
-// that is never drained. Under load this drives the pod's working-set up until
-// the Kubernetes memory limit triggers an OOMKill.
-//
-// v1.1.0 (the fix): replace this with a bounded ring-buffer flushed to a
-// downstream sink. See sre-agent/knowledge-base/runbook-memory-leak.md.
+// In-memory cache of recently accepted events. Surfaced by
+// GET /api/telemetry/recent for the operator dashboard and lightweight
+// downstream consumers that poll for the latest activity.
 const retainedTelemetry = [];
 
 function ingestTelemetry(payload) {
-  // Simulate enrichment - allocate a ~16KB buffer per request so the leak
-  // is visible within a few minutes of moderate load.
+  // Attach receipt metadata and an enrichment blob used by the analytics
+  // pipeline downstream (base64-encoded for transport).
   const enriched = {
     receivedAt: new Date().toISOString(),
     payload,
