@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>ConnectedDrive Telemetry · SRE Demo</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <div class="logo">CD</div>
+      <div>
+        <h1>ConnectedDrive Telemetry</h1>
+        <p class="subtitle">Live vehicle telemetry ingestion · SRE Agent Demo</p>
+      </div>
+    </div>
+    <div class="version-pill">
+      <span class="dot"></span>
+      <span id="version">v?.?.?</span>
+    </div>
+  </header>
+
+  <main>
+    <section class="card">
+      <h2>Pod health</h2>
+      <div class="grid">
+        <div class="stat"><span class="label">Uptime</span><span id="uptime" class="value">—</span></div>
+        <div class="stat"><span class="label">RSS memory</span><span id="rss" class="value">—</span></div>
+        <div class="stat"><span class="label">Heap used</span><span id="heap" class="value">—</span></div>
+        <div class="stat warn"><span class="label">Retained records</span><span id="retained" class="value">—</span></div>
+      </div>
+      <p class="hint">⚠️ <strong>Retained records</strong> should stay flat in a healthy build. If it climbs continuously you are watching the leak.</p>
+    </section>
+
+    <section class="card">
+      <h2>Send a telemetry event</h2>
+      <p>Simulate a connected vehicle posting a status update.</p>
+      <div class="form">
+        <label>VIN <input id="vin" value="YV1ABC1234567890" /></label>
+        <label>Speed (kph) <input id="speed" type="number" value="92" /></label>
+        <label>Battery (%) <input id="battery" type="number" value="78" /></label>
+        <button id="send">Send event</button>
+      </div>
+      <pre id="result">No events sent yet.</pre>
+    </section>
+
+    <section class="card">
+      <h2>About this demo</h2>
+      <p>
+        This app is intentionally broken in <code>v1.0.0</code> — every telemetry event
+        is appended to an in-memory array that is never released. Run the Azure Load
+        Testing job, watch the alert fire, and let <strong>Azure SRE Agent</strong>
+        investigate, mitigate, and ship the fix to <code>v1.1.0</code>.
+      </p>
+    </section>
+  </main>
+
+  <footer>
+    <span>Pod: <code id="host">unknown</code></span>
+    <span>Refreshing every 3 s</span>
+  </footer>
+
+  <script src="/app.js"></script>
+</body>
+</html>
