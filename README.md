@@ -1,9 +1,9 @@
-# ConnectedDrive Telemetry API
+# Care Portal catalog-api
 
-> Vehicle telemetry ingestion service for the ConnectedDrive platform.
-> Ingests near-real-time status events from in-vehicle gateways and
-> exposes them to downstream analytics, fleet operations, and the
-> in-car companion app.
+> Care-request intake service for the regional **Care Portal**.
+> Serves the citizen-facing portal, records near-real-time care requests
+> from web, phone and mobile channels, and exposes them to downstream
+> triage, analytics, and the mobile care app.
 
 [![Production](https://img.shields.io/badge/env-production-success)]()
 [![Runtime](https://img.shields.io/badge/runtime-Node.js%2020-blue)]()
@@ -13,27 +13,27 @@
 
 ## Overview
 
-`telemetry-api` is the front-door HTTPS service that accepts telemetry
-events emitted by connected vehicles. Each event carries the VIN,
-current speed, battery state-of-charge and a UTC timestamp. The service
-validates the payload, attaches receipt metadata, and makes the latest
-events queryable for operational tooling.
+`catalog-api` is the front-door HTTPS service that serves the Care
+Portal and records care requests submitted by citizens. Each
+request carries the service type, priority, channel and a UTC timestamp. The
+service validates the payload, attaches receipt metadata, and makes the
+latest requests queryable for operational tooling.
 
-It is part of the **ConnectedDrive** platform owned by the
-Connected Services team and is deployed continuously to the
+It is part of the **Care Portal** platform owned by the
+Care Platform team and is deployed continuously to the
 `aks-prod` cluster in Sweden Central.
 
 ## Architecture
 
 ```
    ┌──────────────────┐     HTTPS      ┌────────────────────┐
-   │ In-vehicle       │ ─────────────► │ Azure Front Door   │
-   │ telemetry agent  │                │ + WAF              │
+   │ Web, phone &     │ ─────────────► │ Azure Front Door   │
+   │ mobile citizens  │                │ + WAF              │
    └──────────────────┘                └─────────┬──────────┘
                                                  │
                                                  ▼
                                        ┌────────────────────┐
-                                       │ telemetry-api      │
+                                       │ catalog-api        │
                                        │ (this repo)        │
                                        │ AKS · 2+ replicas  │
                                        └─────────┬──────────┘
@@ -41,37 +41,37 @@ Connected Services team and is deployed continuously to the
                                 ┌────────────────┼────────────────┐
                                 ▼                ▼                ▼
                        ┌──────────────┐  ┌──────────────┐  ┌────────────────┐
-                       │ Companion    │  │ Fleet Ops    │  │ Analytics      │
+                       │ Mobile care  │  │ Triage       │  │ Analytics      │
                        │ app backend  │  │ dashboard    │  │ pipeline       │
                        └──────────────┘  └──────────────┘  └────────────────┘
 ```
 
 ## API reference
 
-Base URL (production): `https://telemetry.connecteddrive.internal`
+Base URL (production): `https://care-portal.internal`
 
 | Method | Path | Description |
 |---|---|---|
-| `GET`  | `/`                       | Operator dashboard (live pod stats, send a test event) |
-| `GET`  | `/healthz`                | Liveness probe |
-| `GET`  | `/readyz`                 | Readiness probe |
-| `GET`  | `/api/version`            | Build version + runtime stats |
-| `POST` | `/api/telemetry`          | Ingest one telemetry event |
-| `GET`  | `/api/telemetry/recent`   | Last 10 accepted events (operator tooling) |
-| `GET`  | `/metrics`                | Prometheus exposition |
+| `GET`  | `/`                          | Care portal page (services, live pod stats) |
+| `GET`  | `/healthz`                   | Liveness probe |
+| `GET`  | `/readyz`                    | Readiness probe |
+| `GET`  | `/api/version`               | Build version + runtime stats |
+| `POST` | `/api/care-requests`         | Record one care request |
+| `GET`  | `/api/care-requests/recent`  | Last 10 recorded requests (operator tooling) |
+| `GET`  | `/metrics`                   | Prometheus exposition |
 
-### `POST /api/telemetry`
+### `POST /api/care-requests`
 ```json
 {
-  "vin": "YV1ABC1234567890",
-  "speedKph": 92,
-  "batteryPct": 78,
+  "service": "GP-APPT",
+  "priority": "routine",
+  "channel": "web",
   "ts": "2026-05-27T10:14:00Z"
 }
 ```
 Response `202 Accepted`:
 ```json
-{ "accepted": true, "receivedAt": "2026-05-27T10:14:00.123Z", "retainedRecords": 1 }
+{ "accepted": true, "receivedAt": "2026-05-27T10:14:00.123Z", "pendingRequests": 1 }
 ```
 
 ## Service Level Objectives
@@ -79,11 +79,11 @@ Response `202 Accepted`:
 | SLO | Target |
 |---|---|
 | Availability (rolling 30 d) | 99.9 % |
-| P99 latency `POST /api/telemetry` | < 500 ms |
+| P99 latency `POST /api/care-requests` | < 500 ms |
 | Error rate (5xx / total) | < 0.5 % |
 | Pod restarts in any rolling 30 min window | 0 |
 
-SLO breaches page the Connected Services on-call rotation through the
+SLO breaches page the Care Platform on-call rotation through the
 Action Group `ag-sre-agent` and are also picked up by **Azure SRE Agent**
 for autonomous triage on Sev 1 / Sev 2 incidents.
 
@@ -97,18 +97,18 @@ npm start
 # open http://localhost:8080
 ```
 
-Send a sample event:
+Record a sample care request:
 ```bash
-curl -X POST http://localhost:8080/api/telemetry \
+curl -X POST http://localhost:8080/api/care-requests \
   -H "content-type: application/json" \
-  -d '{"vin":"YV1ABC1234567890","speedKph":92,"batteryPct":78,"ts":"2026-05-27T10:14:00Z"}'
+  -d '{"service":"GP-APPT","priority":"routine","channel":"web","ts":"2026-05-27T10:14:00Z"}'
 ```
 
 ## Container image
 
 Images are built directly in Azure Container Registry from this
 repository — no local Docker, no CI runner. The build is invoked by the
-operator deploy script or by the Connected Services SRE Agent.
+operator deploy script or by the Care Platform SRE Agent.
 
 ```powershell
 az acr build `
@@ -126,9 +126,9 @@ Promoted to AKS namespace `sre-demo`, cluster `aks-prod`, region
 Sweden Central:
 
 ```bash
-kubectl -n sre-demo set image deployment/telemetry-api \
+kubectl -n sre-demo set image deployment/catalog-api \
   app=acrsreswedemo.azurecr.io/sre-demo-app:<version>
-kubectl -n sre-demo rollout status deployment/telemetry-api
+kubectl -n sre-demo rollout status deployment/catalog-api
 ```
 
 Resource profile: 2 replicas, rolling update
@@ -143,17 +143,17 @@ readiness on `/readyz`.
 - Prometheus metrics are exposed on `/metrics` and scraped by the
   cluster's Managed Prometheus add-on. Notable custom metrics:
   - `sre_demo_http_requests_total{method,route,status}`
-  - `sre_demo_retained_telemetry_records`
+  - `sre_demo_retained_care_requests`
   - default process / GC / event-loop metrics under the `sre_demo_` prefix.
-- Alerts (`alert-telemetry-api-memory-pressure`,
-  `alert-telemetry-api-oomkilled`) route to Action Group
+- Alerts (`alert-catalog-api-memory-pressure`,
+  `alert-catalog-api-oomkilled`) route to Action Group
   `ag-sre-agent`.
 
 ## Ownership & support
 
-- **Team:** Connected Services platform
-- **On-call rotation:** `#connected-services-oncall`
-- **Service tier:** Tier 2 (customer-impacting, automated mitigation expected)
+- **Team:** Care Platform team
+- **On-call rotation:** `#care-platform-oncall`
+- **Service tier:** Tier 2 (citizen-impacting, automated mitigation expected)
 - **Incident handling:** Sev 1 / Sev 2 are auto-triaged by Azure SRE
   Agent within the autonomy boundaries defined in the team's
   escalation policy. The agent has scoped permissions on namespace
@@ -168,4 +168,4 @@ readiness on `/readyz`.
    ops team or the SRE Agent.
 
 ---
-© Connected Services — internal use only.
+© Regional Care Portal Platform — internal use only.

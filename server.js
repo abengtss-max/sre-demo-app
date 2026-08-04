@@ -1,6 +1,6 @@
-// ConnectedDrive Telemetry API
-// Ingests near-real-time vehicle status events (VIN, speed, battery SoC, ts)
-// and serves the operator dashboard.
+// Regional Care Portal — care-request intake service
+// Serves the citizen-facing care portal and records incoming care requests
+// (service, priority, channel, ts) for the operations dashboard.
 
 const express = require('express');
 const morgan = require('morgan');
@@ -21,27 +21,27 @@ const httpRequestsTotal = new client.Counter({
 });
 register.registerMetric(httpRequestsTotal);
 
-const telemetryGauge = new client.Gauge({
-  name: 'sre_demo_retained_telemetry_records',
-  help: 'Number of telemetry records currently retained in the in-memory recent-events cache',
+const careRequestGauge = new client.Gauge({
+  name: 'sre_demo_retained_care_requests',
+  help: 'Number of care-request records currently retained in the in-memory intake queue',
 });
-register.registerMetric(telemetryGauge);
+register.registerMetric(careRequestGauge);
 
-// In-memory cache of recently accepted events. Surfaced by
-// GET /api/telemetry/recent for the operator dashboard and lightweight
+// In-memory intake queue of received care requests. Surfaced by
+// GET /api/care-requests/recent for the operations dashboard and lightweight
 // downstream consumers that poll for the latest activity.
-const retainedTelemetry = [];
+const retainedRequests = [];
 
-function ingestTelemetry(payload) {
-  // Attach receipt metadata and an enrichment blob used by the analytics
-  // pipeline downstream (base64-encoded for transport).
+function recordCareRequest(payload) {
+  // Attach receipt metadata and a clinical-summary preview blob used by
+  // the triage pipeline downstream (base64-encoded for transport).
   const enriched = {
     receivedAt: new Date().toISOString(),
     payload,
     enrichment: Buffer.alloc(16 * 1024, 'x').toString('base64'),
   };
-  retainedTelemetry.push(enriched);
-  telemetryGauge.set(retainedTelemetry.length);
+  retainedRequests.push(enriched);
+  careRequestGauge.set(retainedRequests.length);
   return enriched.receivedAt;
 }
 
@@ -62,19 +62,19 @@ app.get('/api/version', (_req, res) => {
     uptimeSeconds: Math.round(process.uptime()),
     rssBytes: process.memoryUsage().rss,
     heapUsedBytes: process.memoryUsage().heapUsed,
-    retainedRecords: retainedTelemetry.length,
+    pendingRequests: retainedRequests.length,
   });
 });
 
-app.post('/api/telemetry', (req, res) => {
-  const body = req.body || { vin: 'UNKNOWN', speedKph: 0, batteryPct: 0 };
-  const receivedAt = ingestTelemetry(body);
-  httpRequestsTotal.inc({ method: 'POST', route: '/api/telemetry', status: 200 });
-  res.status(202).json({ accepted: true, receivedAt, retainedRecords: retainedTelemetry.length });
+app.post('/api/care-requests', (req, res) => {
+  const body = req.body || { service: 'UNKNOWN', priority: 'routine', channel: 'web' };
+  const receivedAt = recordCareRequest(body);
+  httpRequestsTotal.inc({ method: 'POST', route: '/api/care-requests', status: 200 });
+  res.status(202).json({ accepted: true, receivedAt, pendingRequests: retainedRequests.length });
 });
 
-app.get('/api/telemetry/recent', (_req, res) => {
-  res.json(retainedTelemetry.slice(-10));
+app.get('/api/care-requests/recent', (_req, res) => {
+  res.json(retainedRequests.slice(-10));
 });
 
 app.get('/metrics', async (_req, res) => {
@@ -86,3 +86,4 @@ app.listen(PORT, () => {
   // eslint-disable-next-line no-console
   console.log(`[sre-demo-app v${APP_VERSION}] listening on :${PORT}`);
 });
+// build-bust: 2026-05-28T08:09:30.6445792+02:00

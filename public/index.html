@@ -3,56 +3,66 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>ConnectedDrive Telemetry · Operator Console</title>
+  <title>Regional Care Portal · Care guidance & booking</title>
   <link rel="stylesheet" href="/styles.css" />
 </head>
 <body>
   <header>
     <div class="brand">
-      <div class="logo">CD</div>
+      <div class="logo">RC</div>
       <div>
-        <h1>ConnectedDrive Telemetry</h1>
-        <p class="subtitle">Live vehicle telemetry ingestion · Operator console</p>
+        <h1>CARE PORTAL</h1>
+        <p class="subtitle">Regional care guidance · appointment booking</p>
       </div>
     </div>
-    <div class="version-pill">
+    <nav class="topnav">
+      <a href="#services">Find care</a>
+      <a href="#services">Appointments</a>
+      <a href="#services">Advice</a>
+      <a href="#services" class="bag">Requests <span id="bagCount">0</span></a>
+    </nav>
+    <div class="version-pill" title="Care portal build version">
       <span class="dot"></span>
       <span id="version">v?.?.?</span>
     </div>
   </header>
 
   <main>
-    <section class="card">
-      <h2>Pod health</h2>
+    <section class="hero">
+      <div style="width:100%;border-radius:18px;padding:44px 40px;background:linear-gradient(135deg,#2f4858,#3f6070);color:#f4f1ec;">
+        <h2 style="margin:0 0 8px;font-family:Georgia,serif;font-size:28px;letter-spacing:1px;">Get the right care, faster</h2>
+        <p style="margin:0;max-width:520px;opacity:.9;">Request an appointment, renew a prescription or ask for advice. Every request is logged for the care operations team.</p>
+      </div>
+    </section>
+
+    <section id="services" class="shop">
+      <div class="shop-head">
+        <h2>Care services</h2>
+        <p>Tap <strong>Request</strong> to submit a care request — the portal records each request for triage.</p>
+      </div>
+      <div class="products" id="products"><!-- service cards injected by app.js --></div>
+    </section>
+
+    <section class="card status">
+      <h2>Care portal service health</h2>
       <div class="grid">
         <div class="stat"><span class="label">Uptime</span><span id="uptime" class="value">—</span></div>
         <div class="stat"><span class="label">RSS memory</span><span id="rss" class="value">—</span></div>
         <div class="stat"><span class="label">Heap used</span><span id="heap" class="value">—</span></div>
-        <div class="stat warn"><span class="label">Retained records</span><span id="retained" class="value">—</span></div>
+        <div class="stat warn"><span class="label">Pending care requests</span><span id="retained" class="value">—</span></div>
       </div>
-      <p class="hint">ℹ️ <strong>Retained records</strong> shows the size of the in-memory recent-events cache served by <code>GET /api/telemetry/recent</code>.</p>
-    </section>
-
-    <section class="card">
-      <h2>Send a telemetry event</h2>
-      <p>Simulate a connected vehicle posting a status update.</p>
-      <div class="form">
-        <label>VIN <input id="vin" value="YV1ABC1234567890" /></label>
-        <label>Speed (kph) <input id="speed" type="number" value="92" /></label>
-        <label>Battery (%) <input id="battery" type="number" value="78" /></label>
-        <button id="send">Send event</button>
-      </div>
-      <pre id="result">No events sent yet.</pre>
+      <p class="hint">ℹ️ <strong>Pending care requests</strong> shows the size of the in-memory intake queue served by <code>GET /api/care-requests/recent</code>.</p>
+      <pre id="result">No care requests recorded yet.</pre>
     </section>
 
     <section class="card">
       <h2>About this service</h2>
       <p>
-        <code>telemetry-api</code> is the ingestion front door for the
-        ConnectedDrive platform. Use this console to verify pod health,
-        submit a test event, or hand off to the
-        <a href="/metrics">Prometheus metrics</a> endpoint. For incident
-        response procedures, see the Connected Services runbooks.
+        <code>catalog-api</code> is the intake service for the regional
+        Care Portal. It serves the citizen-facing portal, records incoming
+        care requests, and exposes pod health to the operations team. Hand
+        off to the <a href="/metrics">Prometheus metrics</a> endpoint for
+        scraping. For incident response procedures, see the Care Platform runbooks.
       </p>
     </section>
   </main>
